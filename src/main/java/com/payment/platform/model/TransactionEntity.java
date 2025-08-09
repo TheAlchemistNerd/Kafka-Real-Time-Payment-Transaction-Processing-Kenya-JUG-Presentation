@@ -12,7 +12,7 @@ import java.time.Instant;
  */
 @Table("transactions")
 public record TransactionEntity(
-       @Id String transanctionId,
+       @Id String transactionId,
        BigDecimal amount,
        String currency,
        String customerId,

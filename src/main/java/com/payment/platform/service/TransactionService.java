@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
@@ -24,6 +25,7 @@ import java.time.Instant;
 @Service
 public class TransactionService {
     private final TransactionRepository transactionRepository;
+    private final KafkaTemplate<String, TransactionEvent> kafkaTemplate;
     private final Counter transactionCreatedCounter;
     private final Counter transactionFailedCounter;
 
@@ -32,12 +34,28 @@ public class TransactionService {
      * Constructs a new TransactionService.
      *
      * @param transactionRepository The repository for transaction entities.
+     * @param kafkaTemplate The KafkaTemplate for sending messages.
      * @param meterRegistry The Micrometer MeterRegistry for metrics.
      */
-    public TransactionService(TransactionRepository transactionRepository, MeterRegistry meterRegistry) {
+    public TransactionService(TransactionRepository transactionRepository,
+                              KafkaTemplate<String, TransactionEvent> kafkaTemplate,
+                              MeterRegistry meterRegistry) {
         this.transactionRepository = transactionRepository;
+        this.kafkaTemplate = kafkaTemplate;
         this.transactionCreatedCounter = MetricConfig.transactionCreatedCounter(meterRegistry);
         this.transactionFailedCounter = MetricConfig.transactionFailedCounter(meterRegistry);
+    }
+
+    /**
+     * Publishes a new transaction event to Kafka.
+     *
+     * @param event The TransactionEvent to publish.
+     * @return A Mono of the published TransactionEvent.
+     */
+    public Mono<TransactionEvent> processTransactionEvent(TransactionEvent event) {
+        log.info("Received transaction event: {}", event);
+        return Mono.fromRunnable(() -> kafkaTemplate.send("transactions-topic", event.transactionId(), event))
+                .thenReturn(event);
     }
 
     /**
@@ -54,7 +72,10 @@ public class TransactionService {
                 .switchIfEmpty(Mono.error(new InvalidTransactionException("Invalid transaction event: " + event.transactionId())))
                 .map(this::toEntity)
                 .flatMap(transactionRepository::save)
-                .doOnSuccess(s -> transactionCreatedCounter.increment())
+                .doOnSuccess(s -> {
+                    transactionCreatedCounter.increment();
+                    log.info("Transaction persisted: {}", s.transactionId());
+                })
                 .doOnError(e -> {
                     transactionFailedCounter.increment();
                     log.error("Failed to process transaction: {}", e.getMessage());

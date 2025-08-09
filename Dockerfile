@@ -8,8 +8,8 @@ COPY src ./src
 
 RUN cat /app/src/main/resources/application.yml
 
-# Build the project
-RUN mvn clean install -DskipTests
+# Clean Maven cache and build the project
+RUN rm -rf ~/.m2/repository && mvn clean install -DskipTests
 
 # Use a smaller JRE image for the runtime environment
 FROM eclipse-temurin:21-jre-jammy
