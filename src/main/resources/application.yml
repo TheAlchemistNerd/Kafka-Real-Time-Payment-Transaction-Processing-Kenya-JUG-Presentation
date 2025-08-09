@@ -1,0 +1,34 @@
+spring:
+  application:
+    # Uses the environment variable SPRING_APP_NAME from .env
+    name: ${SPRING_APP_NAME}
+  r2dbc:
+    url: r2dbc:postgresql://postgres:5432/${POSTGRES_DB}
+    # Uses environment variables from .env
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
+  kafka:
+    # Uses the environment variable KAFKA_BOOTSTRAP_SERVERS from .env
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    consumer:
+      # Uses the environment variable SPRING_KAFKA_GROUP_ID from .env
+      group-id: ${SPRING_KAFKA_GROUP_ID}
+      auto-offset-reset: earliest
+      properties:
+        # Uses the environment variable SPRING_JSON_TRUSTED_PACKAGES from .env
+        spring.json.trusted.packages: ${SPRING_JSON_TRUSTED_PACKAGES}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+logging:
+  level:
+    com.payment.platform: INFO
+    org.springframework.kafka: INFO
+    io.r2dbc: DEBUG
