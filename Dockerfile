@@ -1,10 +1,12 @@
 # Use the official Maven image to create a build environment
-FROM eclipse-temurin:21-jdk-jammy AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
 # Copy the pom.xml and the project source
 COPY pom.xml .
 COPY src ./src
+
+RUN cat /app/src/main/resources/application.yml
 
 # Build the project
 RUN mvn clean install -DskipTests
